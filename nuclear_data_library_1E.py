@@ -17,12 +17,13 @@ from micro import GroupMicro
 
 
 # Sixteen Energy groups library for critical assemblies
-# Energy2 = [1E-7, 4E-7, 1E-6, 3E-6, 1E-5, 3E-5, 1E-4, 5.5E-4, 3E-3, 1.7E-2, 1E-1, 4E-1, 9E-1, 1.4, 3.0]
+# Energy2 = [1E-7, 4E-7, 1E-6, 3E-6, 1E-5, 3E-5, 1E-4, 5.5E-4,
+#            3E-3, 1.7E-2, 1E-1, 4E-1, 9E-1, 1.4, 3.0]
 
 groups = 1
 
 H1    = GroupMicro("H1",     # isotope
-                   0,        # yield
+                   0,        # fission yield
                    3.3723,   # scatter
                    0,        # capture
                    0,        # fission

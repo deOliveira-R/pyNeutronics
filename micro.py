@@ -34,7 +34,7 @@ class GroupMicro:
     #        """
     #        Option of getting the XS for all energy values by giving only the
     #        background. If background is not give, it causes an error!
-    #        """x
+    #        """
     #        if energy is None:
     #            return self._scatter[background][temperature]
     #        else:
