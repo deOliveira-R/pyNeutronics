@@ -1,8 +1,18 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Apr 12 01:23:55 2019
+
+@author: Rodrigo
+
+
+"""
+
 from constants_n_factors import barn_to_cm2
 
 class GroupMacro:
     """
-    Represents the concept of macroscopic XS, or the attenuation cause by a
+    Represents the concept of macroscopic XS, or the attenuation caused by a
     nucleon upon an impinging beam.
     """
 

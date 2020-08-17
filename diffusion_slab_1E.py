@@ -3,16 +3,27 @@
 """
 Created on Thu Apr  4 00:59:33 2019
 
-@author: rodrigo
+@author: Rodrigo
+
+1 energy, 1 region, 1 dimension problem. (mono-energetic unreflected slab)
+Compute flux using a neutron diffusion approximation.
+
+TODO: - Consolidate numerical schemes in a separate file and implement numba stencils
+      - Implement unit test with analytical solution
+      - Multi-region capabilities
+      - Make spatial mesh to be non-uniform (test and improve)
+      - Implement time derivative using uniform mesh (linspace)
+      - Test non-uniform time using diffusion stability condition
+
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-import nuclear_data_library_1E as lib
+import XS_library_1E as lib
 
-from material_data import *
+from material_data import Material, NuclearMaterial
 
 #flux_average = 1E14
 
@@ -34,6 +45,7 @@ homogeneous_fuel = Material.mix(moderator, fuel, moderator_to_fuel_ratio)
 homogeneous_fuel = NuclearMaterial(lib, homogeneous_fuel)
 
 ### SPATIAL DISCRETIZATION
+# This should be packed into a domain class
 
 slab_size = 100  # cm
 delta = 1  # size of interval for discretization
@@ -44,22 +56,27 @@ mesh_p = mesh_i + 1
 # use linspace for time. Allow space to be nonuniform instead.
 x = np.linspace(-slab_size/2, slab_size/2, mesh_p)
 
+### MAIN PROBLEM
+
 # Calculate gain operator
 
 op_gain = np.zeros((mesh_p, mesh_p))
 
 for i in range(mesh_p):
-    if i!=0 and i!=mesh_p-1: # if not in boundaries
-        op_gain[i,i+1] = 1/8*delta*homogeneous_fuel.nu_fission()
-        op_gain[i,i]   = 3/8*delta*(homogeneous_fuel.nu_fission()*2)
-        op_gain[i,i-1] = 1/8*delta*homogeneous_fuel.nu_fission()
-    else:
-        if i==0:
-            op_gain[i,i+1] = 1/8*delta*homogeneous_fuel.nu_fission()
-            op_gain[i,i]   = 3/8*delta*homogeneous_fuel.nu_fission()
-        if i==mesh_p-1:
-            op_gain[i,i]   = 3/8*delta*homogeneous_fuel.nu_fission()
-            op_gain[i,i-1] = 1/8*delta*homogeneous_fuel.nu_fission()
+    op_gain[i, i] = delta * homogeneous_fuel.nu_fission()
+    if i == 0 or i == mesh_p - 1:
+        op_gain[i, i] *= 0.5
+    # if i!=0 and i!=mesh_p-1: # if not in boundaries
+    #     op_gain[i,i+1] = 1/8*delta*homogeneous_fuel.nu_fission()
+    #     op_gain[i,i]   = 3/8*delta*(homogeneous_fuel.nu_fission()*2)
+    #     op_gain[i,i-1] = 1/8*delta*homogeneous_fuel.nu_fission()
+    # else:
+    #     if i==0:
+    #         op_gain[i,i+1] = 1/8*delta*homogeneous_fuel.nu_fission()
+    #         op_gain[i,i]   = 3/8*delta*homogeneous_fuel.nu_fission()
+    #     if i==mesh_p-1:
+    #         op_gain[i,i]   = 3/8*delta*homogeneous_fuel.nu_fission()
+    #         op_gain[i,i-1] = 1/8*delta*homogeneous_fuel.nu_fission()
 
 
 # Calculate diffusion coefficient and diffusion operator
@@ -84,17 +101,20 @@ for i in range(mesh_p):
 op_abs = np.zeros((mesh_p, mesh_p))
 
 for i in range(mesh_p):
-    if i!=0 and i!=mesh_p-1: # if not in boundaries
-        op_abs[i,i+1] = 1/8*delta*homogeneous_fuel.absorption()
-        op_abs[i,i]   = 3/8*delta*(homogeneous_fuel.absorption()*2)
-        op_abs[i,i-1] = 1/8*delta*homogeneous_fuel.absorption()
-    else:
-        if i==0:
-            op_abs[i,i+1] = 1/8*delta*homogeneous_fuel.absorption()
-            op_abs[i,i]   = 3/8*delta*homogeneous_fuel.absorption()
-        if i==mesh_p-1:
-            op_abs[i,i]   = 3/8*delta*homogeneous_fuel.absorption()
-            op_abs[i,i-1] = 1/8*delta*homogeneous_fuel.absorption()
+    op_abs[i, i] = delta * homogeneous_fuel.absorption()
+    if i == 0 or i == mesh_p - 1:
+        op_abs[i, i] *= 0.5
+    # if i!=0 and i!=mesh_p-1: # if not in boundaries
+    #     op_abs[i,i+1] = 1/8*delta*homogeneous_fuel.absorption()
+    #     op_abs[i,i]   = 3/8*delta*(homogeneous_fuel.absorption()*2)
+    #     op_abs[i,i-1] = 1/8*delta*homogeneous_fuel.absorption()
+    # else:
+    #     if i==0:
+    #         op_abs[i,i+1] = 1/8*delta*homogeneous_fuel.absorption()
+    #         op_abs[i,i]   = 3/8*delta*homogeneous_fuel.absorption()
+    #     if i==mesh_p-1:
+    #         op_abs[i,i]   = 3/8*delta*homogeneous_fuel.absorption()
+    #         op_abs[i,i-1] = 1/8*delta*homogeneous_fuel.absorption()
 
 # Calculate the loss operator (absorption + leakage)
 
@@ -126,8 +146,8 @@ while(not converged and max_iterations > iteration):
     flux_acc.append(flux_distribution_iter)
     
     source = op_gain@flux_distribution_iter
-    
     k_iter = sum(source)/(sum(source_acc[-1])/k_acc[-1])
+
     source_acc.append(source)
     k_acc.append(k_iter)
     
@@ -136,7 +156,7 @@ while(not converged and max_iterations > iteration):
     k_error = abs((k_acc[-1] - k_acc[-2])/k_acc[-1])
     
     if k_error < error: converged = True
-    
+
 # Plot results
 
 sns.set()
@@ -145,6 +165,6 @@ plt.figure()
 ax = plt.plot(k_acc)
 
 plt.figure()
-ax = plt.plot(flux_distribution_iter)
+ax2 = plt.plot(flux_distribution_iter)
 
 plt.show()

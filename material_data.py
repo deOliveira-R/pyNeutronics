@@ -3,40 +3,47 @@
 """
 Created on Fri Apr 12 01:23:55 2019
 
-@author: rodrigo
+@author: Rodrigo
+
+TODO: - This REALLY needs unit testing! Specially the mixing.
 """
 
 from constants_n_factors import *
-import isotopes as data
+import isotopes
 from macro import GroupMacro
 
+import numpy as np
+import unittest
 
-class presetMaterial:
+
+class PresetMaterial:
     def __init__(self, density, composition):
         self.density = density  # g/cm3
         self.composition = composition
 
 
-UO2 = presetMaterial(10.4, {'U': 1, 'O': 2})
-H2O = presetMaterial(0.75, {'H': 2, 'O': 1})
+UO2 = PresetMaterial(10.4, {'U': 1, 'O': 2})
+H2O = PresetMaterial(0.75, {'H': 2, 'O': 1})
 
 
 class Material:
-    def __init__(self, density, fraction):
+    def __init__(self, density, fraction: dict):
         self.composition = {}
 
+        # check is density is a string or a float of negative or positive value
+        # to decide how to dealt with the fraction dictionary
         density_type = None
         if density is 'absolute':
-            density_type = 'absolute' # fractions are absolute atom densities already
+            density_type = 'absolute'  # fractions are absolute atom densities already
         elif density > 0:
-            density_type = 'atom' # atom/cm3
+            density_type = 'atom'  # atom/cm3
         elif density < 0:
-            density_type = 'mass' # g/cm3
+            density_type = 'mass'  # g/cm3
         else:
-            pass # TODO: implement an error catch
+            pass  # TODO: implement an error catch
 
-        # check all keys in fraction dictionary have same sign (atom or mass)
-        test_key = list(fraction)[0] # fraction.keys()[0]
+        # get first key as a reference to see if all other keys have the same sign
+        test_key = list(fraction)[0]  # fraction.keys()[0]
         atom_fraction = None
         if fraction[test_key] > 0:
             atom_fraction = True
@@ -46,21 +53,24 @@ class Material:
             pass
             # TODO: implement error catch
 
+        # check all keys in fraction dictionary have same sign as the first key
+        # because it's not possible to deal with a mix of atom and mass fractions
         if atom_fraction:
             if any(fraction[key] < 0 for key in fraction):
-                pass # TODO: implement error catch
+                pass  # TODO: implement error catch
             else:
                 pass
         else:
             if any(fraction[key] > 0 for key in fraction):
-                pass # TODO: implement error catch
+                pass  # TODO: implement error catch
             else:
                 pass
 
         # if fractions are absolute, pass them to the composition dictionary
         if density_type is 'absolute':
             self.composition = fraction.copy()
-        # if fractions are not absolute, calculate composition from density and fractions
+        # if fractions are not absolute, calculate absolute composition
+        # from density and fractions
         else:
             # After density and fraction classification, make everyone positive
             density = abs(density)
@@ -73,40 +83,65 @@ class Material:
             # Calculate isotopic densities (isotope / cm3)
             if density_type is 'atom':
                 if not atom_fraction:
-                    self.massToAtom(fraction)
+                    self.mass_to_atom(fraction)
 
                 self.composition = {key: value * density for key, value in fraction.items()}
 
             elif density_type is 'mass':
                 if atom_fraction:
-                    self.atomToMass(fraction)
+                    self.atom_to_mass(fraction)
 
-                self.composition = {key: value * density * (Avogadro / getattr(data, key).mass)
+                self.composition = {key: value * density * (Avogadro / getattr(isotopes, key).mass)
                                     for key, value in fraction.items()}
             else:
-                pass # TODO: wtf error
-
+                pass  # TODO: wtf error
 
     @staticmethod
-    def massToAtom(fraction):
+    def convert(from_to: str, fraction: dict):
+        if from_to is 'massToAtom':
+            factor = lambda w, mm: w / mm
+        elif from_to is 'atomToMass':
+            factor = lambda n, mm: n * mm
+        else:
+            pass  # TODO: error related to unexpected fromTo value
+
+        total_density = sum(factor(value, getattr(isotopes, key).mass) for key, value in fraction.items())
+        fraction.update((key, factor(value, getattr(isotopes, key).mass) / total_density)
+                        for key, value in fraction.items())
+
+    @staticmethod
+    def mass_to_atom(fraction: dict):
         nf = lambda w, mm: w / mm
-        total_den = sum(nf(value, getattr(data, key).mass) for key, value in fraction.items())
-        fraction.update((key, nf(value, getattr(data, key).mass) / total_den) for key, value in fraction.items())
+        total_den = sum(nf(value, getattr(isotopes, key).mass) for key, value in fraction.items())
+        fraction.update((key, nf(value, getattr(isotopes, key).mass) / total_den) for key, value in fraction.items())
 
     @staticmethod
-    def atomToMass(fraction):
+    def atom_to_mass(fraction: dict):
         wf = lambda n, mm: n * mm
-        total_den = sum(wf(value, getattr(data, key).mass) for key, value in fraction.items())
-        fraction.update((key, wf(value, getattr(data, key).mass) / total_den) for key, value in fraction.items())
+        total_den = sum(wf(value, getattr(isotopes, key).mass) for key, value in fraction.items())
+        fraction.update((key, wf(value, getattr(isotopes, key).mass) / total_den) for key, value in fraction.items())
 
     @classmethod
-    def mix(cls, mat1, mat2, ratio1to2):
+    def mix(cls, material1, material2, ratio1to2: float):
+        """
+        This method receives 2 Material objects and a mix ratio and returns another Material object from the mix.
+
+        :param material1: Material
+        :param material2: Material
+        :param ratio1to2: float
+        :return: Material
+        """
+
+        # calculate fractions from ratios
         fraction2 = 1 / (ratio1to2 + 1)
         fraction1 = 1 - fraction2
 
-        composition1 = {key: value * fraction1 for key, value in mat1.composition.items()}
-        composition2 = {key: value * fraction2 for key, value in mat2.composition.items()}
+        # scale compositions by the calculated fractions, since the composition dictionary
+        # is already in isotope atomic density.
+        composition1 = {key: value * fraction1 for key, value in material1.composition.items()}
+        composition2 = {key: value * fraction2 for key, value in material2.composition.items()}
 
+        # add the scaled compositions in the mixed dictionary
         mixed = composition1.copy()
         for key in composition2:
             if key in mixed:
@@ -114,6 +149,7 @@ class Material:
             else:
                 mixed[key] = composition2[key]
 
+        # return the new mixed material by calling the initializer of this Material class
         return cls('absolute', mixed)
 
 
@@ -157,3 +193,37 @@ class NuclearMaterial:
 
     def diffusion(self):
         return self._diffusion
+
+
+class MaterialTest(unittest.TestCase):
+
+    def setUp(self):
+        self.fraction_atom = {'H1': 2, 'O16': 1}
+        self.fraction_atom_normalized = {'H1': 0.6666666666666666, 'O16': 0.3333333333333333}
+        self.fraction_mass_normalized = {'H1': 0.11191487328808075, 'O16': 0.8880851267119192}
+
+    def test_atomToMass(self):
+        to_mass = self.fraction_atom.copy()
+        Material.atom_to_mass(to_mass)
+        self.assertTrue(np.allclose(list(to_mass.values()),
+                                    list(self.fraction_mass_normalized.values()),
+                                    rtol=1e-5))
+
+    def test_massToAtom(self):
+        to_atom = self.fraction_mass_normalized.copy()
+        Material.mass_to_atom(to_atom)
+        self.assertTrue(np.allclose(list(to_atom.values()),
+                                    list(self.fraction_atom_normalized.values()),
+                                    rtol=1e-5))
+
+    def test_conversionHypothesis(self):
+        hypothesis = self.fraction_atom.copy()
+        Material.atom_to_mass(hypothesis)
+        Material.mass_to_atom(hypothesis)
+        self.assertTrue(np.allclose(list(hypothesis.values()),
+                                    list(self.fraction_atom_normalized.values()),
+                                    rtol=1e-5))
+
+
+if __name__ == '__main__':
+    unittest.main()

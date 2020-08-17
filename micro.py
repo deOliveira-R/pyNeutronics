@@ -1,14 +1,26 @@
-import isotopes as data
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Apr 12 01:23:55 2019
+
+@author: Rodrigo
+
+
+"""
+
+import isotopes
 
 class GroupMicro:
     """
-    Represents the concept of a microscopic XS
+    Represents the concept of a microscopic XS of a SINGLE isotope
+    for a discrete energy mesh.
 
-    TODO: Parametrization by: energy group and background XS (for mixing)
+    TODO: - Expand to include multiple energy groups
+          - Add parametrization by background XS (for mixing) and temperature
     """
 
     def __init__(self, isotope, fyield, scatter, capture, fission, nubar):
-        self.isotope = getattr(data, isotope)
+        self.isotope = getattr(isotopes, isotope)
         self.mass = self.isotope.mass
         self.fyield = fyield
 

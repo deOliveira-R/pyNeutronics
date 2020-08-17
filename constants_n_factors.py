@@ -3,7 +3,7 @@
 """
 Created on Fri Apr 12 00:56:52 2019
 
-@author: rodrigo
+@author: Rodrigo
 """
 
 from scipy.constants import Avogadro
