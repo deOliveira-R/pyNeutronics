@@ -1,7 +1,6 @@
 # pyNeutronics
 
-Solution of neutron diffusion problem for 1 energy group in a very simple 1-dimensional slab geometry with vacuum boundary conditions.
+Solution of neutron diffusion problem for 1 energy group in 1-dimensional geometries (slab, infinite cylinder or sphere) with given boundary conditions.
 
-Finite difference box integration method is used for spatial discretization.
-
-It doesn't get any simpler than this...
+Finite difference method is used for spatial discretization.
+Ghost cell method is used for boundary condition (Dirichlet one in particular).

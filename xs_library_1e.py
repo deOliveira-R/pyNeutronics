@@ -3,7 +3,7 @@
 """
 Created on Thu Apr 11 23:54:54 2019
 
-@author: rodrigo
+@author: Rodrigo
 """
 
 from micro import GroupMicro

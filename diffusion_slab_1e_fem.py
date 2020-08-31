@@ -15,17 +15,18 @@ TODO: - Consolidate numerical schemes in a separate file and implement numba ste
       - Implement time derivative using uniform mesh (linspace)
       - Test non-uniform time using diffusion stability condition
 
+WARNING: Not working properly with analytical solution
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-import XS_library_1E as lib
+import xs_library_1e as lib
 
 from material_data import Material, NuclearMaterial
 
-#flux_average = 1E14
+# flux_average = 1E14
 
 #### MAKE INDIVIDUAL MATERIALS
 
@@ -78,24 +79,23 @@ for i in range(mesh_p):
     #         op_gain[i,i]   = 3/8*delta*homogeneous_fuel.nu_fission()
     #         op_gain[i,i-1] = 1/8*delta*homogeneous_fuel.nu_fission()
 
-
 # Calculate diffusion coefficient and diffusion operator
 
 op_diff = np.zeros((mesh_p, mesh_p))
 
 for i in range(mesh_p):
-    if i!=0 and i!=mesh_p-1: # if not in boundaries
+    if i!=0 and i!=mesh_p-1:  # if not in boundaries
         op_diff[i,i+1] = -homogeneous_fuel.diffusion()/delta
         op_diff[i,i]   = (homogeneous_fuel.diffusion()*2)/delta
         op_diff[i,i-1] = -homogeneous_fuel.diffusion()/delta
     else:
         if i==0:
             op_diff[i,i+1] = -homogeneous_fuel.diffusion()/delta
-            op_diff[i,i]   = homogeneous_fuel.diffusion()/delta + 0.5
+            op_diff[i,i]   =  homogeneous_fuel.diffusion()/delta + 0.5
         if i==mesh_p-1:
-            op_diff[i,i]   = homogeneous_fuel.diffusion()/delta + 0.5
+            op_diff[i,i]   =  homogeneous_fuel.diffusion()/delta + 0.5
             op_diff[i,i-1] = -homogeneous_fuel.diffusion()/delta
-        
+
 # Calculate absorption operator
 
 op_abs = np.zeros((mesh_p, mesh_p))
@@ -155,7 +155,8 @@ while(not converged and max_iterations > iteration):
     
     k_error = abs((k_acc[-1] - k_acc[-2])/k_acc[-1])
     
-    if k_error < error: converged = True
+    if k_error < error:
+        converged = True
 
 # Plot results
 

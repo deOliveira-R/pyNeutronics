@@ -12,6 +12,7 @@ from constants_n_factors import *
 import isotopes
 from macro import GroupMacro
 
+from typing import Union, Dict
 import numpy as np
 import unittest
 
@@ -27,7 +28,7 @@ H2O = PresetMaterial(0.75, {'H': 2, 'O': 1})
 
 
 class Material:
-    def __init__(self, density, fraction: dict):
+    def __init__(self, density: Union[float, str], fraction: Dict):
         self.composition = {}
 
         # check is density is a string or a float of negative or positive value
@@ -97,7 +98,7 @@ class Material:
                 pass  # TODO: wtf error
 
     @staticmethod
-    def convert(from_to: str, fraction: dict):
+    def convert(from_to: str, fraction: Dict):
         if from_to is 'massToAtom':
             factor = lambda w, mm: w / mm
         elif from_to is 'atomToMass':
@@ -110,13 +111,13 @@ class Material:
                         for key, value in fraction.items())
 
     @staticmethod
-    def mass_to_atom(fraction: dict):
+    def mass_to_atom(fraction: Dict):
         nf = lambda w, mm: w / mm
         total_den = sum(nf(value, getattr(isotopes, key).mass) for key, value in fraction.items())
         fraction.update((key, nf(value, getattr(isotopes, key).mass) / total_den) for key, value in fraction.items())
 
     @staticmethod
-    def atom_to_mass(fraction: dict):
+    def atom_to_mass(fraction: Dict):
         wf = lambda n, mm: n * mm
         total_den = sum(wf(value, getattr(isotopes, key).mass) for key, value in fraction.items())
         fraction.update((key, wf(value, getattr(isotopes, key).mass) / total_den) for key, value in fraction.items())
