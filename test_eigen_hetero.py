@@ -57,39 +57,38 @@ def nu_fission_func(r):
            + 0.0*(r > 75)
 
 
-# d_extr = 0.7104*dif_func(100)
-#
-# R = 275
-# I = 500
-#
-# L = lambda D, A: np.sqrt(D/A)
-# Lf = L(dif_func(5), sig_a_func(5))
-# Lr = L(dif_func(100), sig_a_func(100))
-#
-# C = dif_func(100)/Lr/np.tanh(200+d_extr)
-#
-# Bg = 0.019805
-# keff = 1.005859
-# Bm = np.sqrt((nu_fission_func(5)/keff - sig_a_func(5)) / dif_func(5))
-#
-# A = np.cos(Bm * 75)/np.sinh((200 + d_extr)/Lr)
-# slab_fuel_ana = lambda Bm, x: np.cos(Bm * x)
-# slab_refl_ana = lambda A, Re, Lr, x: A * np.sinh((Re - x)/Lr)
-#
-#
-# slab = dif.Domain.uniform(R, I, 'slab')
-#
-# slab_diffusion = dif.DiffusionEigenvalue1E.from_position_function(slab, dif_func, sig_a_func, nu_fission_func)
-# # kn, phi_num, centers = slab_diffusion.solve(BC)
-#
-# slab_ana = lambda r: slab_fuel_ana(Bm, r) * (r <= 75) \
-#                    + slab_refl_ana(A, R + d_extr, Lr, r) * (r > 75)
-#
-# slab_res = slab_ana(slab.centers)
-# slab_res /= np.linalg.norm(slab_res)  # make norm(x)==1
+d_extr = 0.7104*dif_func(100)
 
-# plt.figure()
-# axa = plt.plot(slab.centers, phi_num)
-# axb = plt.plot(slab.centers, slab_res)
-# axb = plt.plot(slab.centers, slab_refl_ana_res)
-# plt.show()
+R = 275
+I = 500
+
+L = lambda D, A: np.sqrt(D/A)
+Lf = L(dif_func(5), sig_a_func(5))
+Lr = L(dif_func(100), sig_a_func(100))
+
+C = dif_func(100)/Lr/np.tanh(200+d_extr)
+
+Bg = 0.019805
+keff = 1.005859
+Bm = np.sqrt((nu_fission_func(5)/keff - sig_a_func(5)) / dif_func(5))
+
+A = np.cos(Bm * 75)/np.sinh((200 + d_extr)/Lr)
+slab_fuel_ana = lambda Bm, x: np.cos(Bm * x)
+slab_refl_ana = lambda A, Re, Lr, x: A * np.sinh((Re - x)/Lr)
+
+
+slab = dif.Domain.uniform(R, I, 'slab')
+
+slab_diffusion = dif.DiffusionEigenvalue1E.from_position_function(slab, dif_func, sig_a_func, nu_fission_func)
+kn, phi_num = slab_diffusion.solve(BC)
+
+slab_ana = lambda r: slab_fuel_ana(Bm, r) * (r <= 75) \
+                   + slab_refl_ana(A, R + d_extr, Lr, r) * (r > 75)
+
+slab_res = slab_ana(slab.centers)
+slab_res /= np.linalg.norm(slab_res)  # make norm(x)==1
+
+plt.figure()
+axa = plt.plot(slab.centers, phi_num)
+axb = plt.plot(slab.centers, slab_res)
+plt.show()
