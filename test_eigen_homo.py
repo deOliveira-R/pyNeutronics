@@ -27,21 +27,21 @@ epsilon = 1.0e-10
 
 slab = dif.Domain.uniform(R, I, 'slab')
 slab_diffusion = dif.DiffusionEigenvalue1E.from_position_function(slab, dif_func, sig_a_func, nu_fission_func)
-k_new, phi_slb, centers = slab_diffusion.solve(BC, epsilon=epsilon)
+k, phi_slb = slab_diffusion.solve(BC, epsilon=epsilon)
 # phi_slb_ana = A * np.cos(np.pi*centers/R)
 
 cylinder = dif.Domain.uniform(R, I, 'cyl')
 cylinder_diffusion = dif.DiffusionEigenvalue1E.from_position_function(cylinder, dif_func, sig_a_func, nu_fission_func)
-kc, phi_cyl, centers = cylinder_diffusion.solve(BC, epsilon=epsilon)
+kc, phi_cyl = cylinder_diffusion.solve(BC, epsilon=epsilon)
 
 sphere = dif.Domain.uniform(R, I, 'sph')
 sphere_diffusion = dif.DiffusionEigenvalue1E.from_position_function(sphere, dif_func, sig_a_func, nu_fission_func)
-ks, phi_sph, centers = sphere_diffusion.solve(BC, epsilon=epsilon)
+ks, phi_sph = sphere_diffusion.solve(BC, epsilon=epsilon)
 
 plt.figure()
-ax = plt.plot(centers, phi_slb)
-ax2 = plt.plot(centers, phi_cyl)
-ax3 = plt.plot(centers, phi_sph)
+ax = plt.plot(slab.centers, phi_slb)
+ax2 = plt.plot(cylinder.centers, phi_cyl)
+ax3 = plt.plot(sphere.centers, phi_sph)
 plt.show()
 
 # solution in cylindrical geometry with 20 cells

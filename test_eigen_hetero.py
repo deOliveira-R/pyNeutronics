@@ -31,14 +31,14 @@ slab_diffusion = dif.DiffusionEigenvalue1E.from_position_function(slab, dif_func
 cylinder_diffusion = dif.DiffusionEigenvalue1E.from_position_function(cylinder, dif_func, sig_a_func, nu_fission_func)
 sphere_diffusion = dif.DiffusionEigenvalue1E.from_position_function(sphere, dif_func, sig_a_func, nu_fission_func)
 
-k,  phi_slb, centers_slb = slab_diffusion.solve(BC)
-kc, phi_cyl, centers_cyl = cylinder_diffusion.solve(BC)
-ks, phi_sph, centers_sph = sphere_diffusion.solve(BC)
+k,  phi_slb = slab_diffusion.solve(BC)
+kc, phi_cyl = cylinder_diffusion.solve(BC)
+ks, phi_sph = sphere_diffusion.solve(BC)
 
 plt.figure()
-ax = plt.plot(centers_slb, phi_slb)
-ax2 = plt.plot(centers_cyl, phi_cyl)
-ax3 = plt.plot(centers_sph, phi_sph)
+ax = plt.plot(slab.centers, phi_slb)
+ax2 = plt.plot(cylinder.centers, phi_cyl)
+ax3 = plt.plot(sphere.centers, phi_sph)
 plt.show()
 
 

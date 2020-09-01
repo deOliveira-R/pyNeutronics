@@ -50,9 +50,9 @@ materials = list(map(mapping_homo, slab.centers))
 print(materials)
 
 slab_diffusion = dif.DiffusionEigenvalue1E.from_materials(slab, materials)
-k, phi, centers = slab_diffusion.solve(BC, epsilon=epsilon)
+k, phi = slab_diffusion.solve(BC, epsilon=epsilon)
 # phi_slb_ana = A * np.cos(np.pi*centers/R)
 
 plt.figure()
-ax = plt.plot(centers, phi)
+ax = plt.plot(slab.centers, phi)
 plt.show()

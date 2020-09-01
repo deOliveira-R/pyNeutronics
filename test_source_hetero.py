@@ -39,7 +39,7 @@ BC = (1, 0, 0)  # flux 0 at boundary
 
 slab = Domain.uniform(R, I, 'slb')
 slab_diffusion = dif.DiffusionSource.from_position_function(slab, dif_func, sig_a_func, nu_fission_func, source_func)
-phi_slb, rx = slab_diffusion.solve(BC)
+phi_slb = slab_diffusion.solve(BC)
 
 
 def slab_ana(r):
@@ -48,22 +48,21 @@ def slab_ana(r):
     return value
 
 
-phi_ana = slab_ana(rx)
+phi_ana = slab_ana(slab.centers)
 
 cylinder = Domain.uniform(R, I, 'cyl')
 cylinder_diffusion = dif.DiffusionSource.from_position_function(cylinder, dif_func, sig_a_func, nu_fission_func, source_func)
-
-phi_cyl, rc = cylinder_diffusion.solve(BC)
+phi_cyl = cylinder_diffusion.solve(BC)
 
 sphere = Domain.uniform(R, I, 'sph')
 sphere_diffusion = dif.DiffusionSource.from_position_function(sphere, dif_func, sig_a_func, nu_fission_func, source_func)
-phi_sph, rs = sphere_diffusion.solve(BC)
+phi_sph = sphere_diffusion.solve(BC)
 
 plt.figure()
-ax = plt.plot(rx, phi_slb)
-ax_ana = plt.scatter(rx, phi_ana)
-ax2 = plt.plot(rc, phi_cyl)
-ax3 = plt.plot(rs, phi_sph)
+ax = plt.plot(slab.centers, phi_slb)
+ax_ana = plt.scatter(slab.centers, phi_ana)
+ax2 = plt.plot(cylinder.centers, phi_cyl)
+ax3 = plt.plot(sphere.centers, phi_sph)
 plt.show()
 
 # Reed's problem
@@ -102,18 +101,18 @@ BC = (0.25, 0.5 * dif_func(R), 0)  # vacuum BC
 
 slab = Domain.uniform(R, I, 'slb')
 slab_diffusion = dif.DiffusionSource.from_position_function(slab, dif_func, sig_a_func, nu_fission_func, source_func)
-phi_slb, rx = slab_diffusion.solve(BC)
+phi_slb = slab_diffusion.solve(BC)
 
 cylinder = Domain.uniform(R, I, 'cyl')
 cylinder_diffusion = dif.DiffusionSource.from_position_function(cylinder, dif_func, sig_a_func, nu_fission_func, source_func)
-phi_cyl, rc = cylinder_diffusion.solve(BC)
+phi_cyl = cylinder_diffusion.solve(BC)
 
 sphere = Domain.uniform(R, I, 'sph')
 sphere_diffusion = dif.DiffusionSource.from_position_function(sphere, dif_func, sig_a_func, nu_fission_func, source_func)
-phi_sph, rs = sphere_diffusion.solve(BC)
+phi_sph = sphere_diffusion.solve(BC)
 
 plt.figure()
-ax = plt.plot(rx, phi_slb)
-ax2 = plt.plot(rc, phi_cyl)
-ax3 = plt.plot(rs, phi_sph)
+ax = plt.plot(slab.centers, phi_slb)
+ax2 = plt.plot(cylinder.centers, phi_cyl)
+ax3 = plt.plot(sphere.centers, phi_sph)
 plt.show()

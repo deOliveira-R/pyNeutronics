@@ -338,7 +338,7 @@ class DiffusionSource:
 
         # remove first and last elements of phi because they are outside the domain (at ghost points)
         phi = phi[1:-1]
-        return phi, self.centers
+        return phi
 
 
 class DiffusionEigenvalue1E:
@@ -514,7 +514,7 @@ class DiffusionEigenvalue1E:
         k = 1.0 / l
         # remove first and last elements of phi because they are outside the domain (at ghost points)
         phi = phi[1:-1]
-        return k, phi, self.centers
+        return k, phi
 
 
 class DiffusionEigenvalueMG:
@@ -671,7 +671,7 @@ class DiffusionEigenvalueMG:
         k = 1.0 / l
         # remove first and last elements of phi because they are outside the domain (at ghost points)
         phi = phi[1:-1]
-        return k, phi, self.centers
+        return k, phi
 
 
 class FunctionTest(unittest.TestCase):
