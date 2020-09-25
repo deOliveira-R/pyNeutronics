@@ -8,15 +8,19 @@ Created on Wed Aug  19 13:58:00 2020
 Implements 1 dimensional domain class to be used by solvers for geometrical description of the problem.
 """
 
+from itertools import chain
 import numpy as np
 import unittest
 
 
 class Domain:
-    cartesian = ['slab', 'slb']
-    curvilinear = ['cylindrical', 'cyl',
-                   'spherical', 'sph']
-    available_geometries = cartesian + curvilinear
+
+    shapes = {'slab': ['slab', 'slb'],
+              'cylindrical': ['cylindrical', 'cyl'],
+              'spherical': ['spherical', 'sph']}
+
+    cartesian = shapes['slab']
+    curvilinear = shapes['cylindrical'] + shapes['spherical']
 
     def __init__(self, points, geometry: str):
         """
@@ -30,31 +34,30 @@ class Domain:
         :param points: array of points representing cell boundaries
         :param geometry: shape of domain
         """
-        self.prechecks(points, geometry)
+        self.pre_checks(points, geometry)
 
         self.points = points
         self.delta_points = self.points[1:] - self.points[:-1]
         self.centers = self.points[:-1] + 0.5 * self.delta_points
         self.delta_centers = self.centers[1:] - self.centers[:-1]
 
-        if geometry is 'slab' or geometry is 'slb':
+        if geometry in self.shapes['slab']:
             # in slab it’s 1 everywhere
             self.surfaces = np.ones_like(points)
             # in slab its ri+1 - ri (which is delta at ri)
             self.volumes = self.delta_points
-        elif geometry is 'cylindrical' or geometry is 'cyl':
+        elif geometry in self.shapes['cylindrical']:
             # in cylinder it is 2 pi r
             self.surfaces = 2.0 * np.pi * points
             # in cylinder its pi (r1^2 - r0^2)
             self.volumes = np.pi * (points[1:] ** 2 - points[:-1] ** 2)
-        elif geometry is 'spherical' or geometry is 'sph':
+        elif geometry in self.shapes['spherical']:
             # in sphere it is 4 pi r^2
             self.surfaces = 4.0 * np.pi * points ** 2
             # in sphere its 4/3 pi (ri+1^3 - ri^3)
             self.volumes = 4.0 / 3.0 * np.pi * (points[1:] ** 3 - points[:-1] ** 3)
         else:
-            raise ValueError(
-                'Unspecified geometry type. Must be:\n - slab (slb)\n - cylindrical (cyl)\n - spherical (sph)')
+            raise ValueError(f'Unspecified geometry type. Must be in {self.shapes}')
 
     @ classmethod
     def uniform(cls, length: float, intervals: int, geometry: str):
@@ -73,12 +76,12 @@ class Domain:
 
         return cls(points, geometry)
 
-    def prechecks(self, points, geometry):
+    def pre_checks(self, points, geometry):
         assert self.strictly_increasing(points), \
             "Array of points must be strictly increasing."
 
-        assert geometry in self.available_geometries, \
-            f"Geometry type '{geometry}' is unavailable. Available geometries are: {self.available_geometries}"
+        assert geometry in chain(*self.shapes.values()), \
+            f"Geometry type '{geometry}' is unavailable. Available geometries are: {list(chain(*self.shapes.values()))}"
 
         if geometry in self.curvilinear:
             assert points[0] == 0.0,\

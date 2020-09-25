@@ -8,7 +8,7 @@ sns.set()
 
 
 def dif_func(r):
-    return 4.0*(r > 0) #np.full_like(r, 4)
+    return 4.0*(r > 0)  # np.full_like(r, 4)
 
 
 def sig_a_func(r):

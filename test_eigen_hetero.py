@@ -92,3 +92,9 @@ plt.figure()
 axa = plt.plot(slab.centers, phi_num)
 axb = plt.plot(slab.centers, slab_res)
 plt.show()
+
+def dif_func(r):
+    return np.array([1.16356040, 0.56])*(r <= 75)\
+           + np.array([2.04235228, 1.4])*(r > 75)
+
+print(dif_func(76))

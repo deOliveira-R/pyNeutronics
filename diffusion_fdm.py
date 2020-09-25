@@ -37,17 +37,17 @@ class DomainOld:
         self.centers = np.arange(intervals) * self.delta + 0.5 * self.delta
         self.points = np.arange(intervals + 1) * self.delta
 
-        if geometry is 'slab' or geometry is 'slb':
+        if geometry == 'slab' or geometry == 'slb':
             # in slab it’s 1 everywhere
             self.surfaces = np.ones_like(self.points)
             # #in slab its dr
             self.volumes = np.full_like(self.centers, self.delta)
-        elif geometry is 'cylindrical' or geometry is 'cyl':
+        elif geometry == 'cylindrical' or geometry == 'cyl':
             # in cylinder it is 2 pi r
             self.surfaces = 2.0 * np.pi * self.points
             # in cylinder its pi (r^2 - r^2)
             self.volumes = np.pi * (self.points[1:] ** 2 - self.points[:-1] ** 2)
-        elif geometry is 'spherical' or geometry is 'sph':
+        elif geometry == 'spherical' or geometry == 'sph':
             # in sphere it is 4 pi r^2
             self.surfaces = 4.0 * np.pi * self.points ** 2
             # in sphere its 4/3 pi (r^3 - r^3)
@@ -65,9 +65,9 @@ def mean_old(diffusion: np.ndarray, kind: str = 'harmonic') -> np.ndarray:
     :param kind: selects between harmonic or arithmetic mean
     :return: array of mean values (size L - 1)
     """
-    if kind is 'harmonic' or kind is 'har':
+    if kind == 'harmonic' or kind == 'har':
         diffusion_ = 2*diffusion[1:]*diffusion[:-1] / (diffusion[1:] + diffusion[:-1])
-    elif kind is 'arithmetic' or kind is 'ari':
+    elif kind == 'arithmetic' or kind == 'ari':
         diffusion_ = (diffusion[1:] + diffusion[:-1]) / 2
     else:
         raise ValueError(
@@ -157,9 +157,9 @@ def mean(diffusion: np.ndarray, deltas: np.ndarray, kind: str = 'harmonic') -> n
 
     TODO: need to check implementation of harmonic interpolation and implement unit test.
     """
-    if kind is 'harmonic' or kind is 'har':
+    if kind == 'harmonic' or kind == 'har':
         diffusion_ = 1 / ((deltas[1:] / diffusion[1:] + deltas[:-1] / diffusion[:-1]) / (deltas[1:] + deltas[:-1]))
-    elif kind is 'arithmetic' or kind is 'ari':
+    elif kind == 'arithmetic' or kind == 'ari':
         diffusion_ = (diffusion[1:] * deltas[1:] + diffusion[:-1] * deltas[:-1]) / (deltas[1:] + deltas[:-1])
     else:
         raise ValueError(
@@ -307,9 +307,9 @@ class DiffusionSource:
         centrals = backwards + forwards + self.sig_a - self.nu_fission
 
         A = sps.diags([np.concatenate([-backwards, [bc0]]),
-                        np.concatenate([[bcoe], centrals, [bce]]),
-                        np.concatenate([[bco0], -forwards])],
-                       [-1, 0, 1])
+                       np.concatenate([[bcoe], centrals, [bce]]),
+                       np.concatenate([[bco0], -forwards])],
+                      [-1, 0, 1])
 
         b = np.concatenate([[BCO[2]], self.source, [BC[2]]])
 
@@ -522,14 +522,15 @@ class DiffusionEigenvalueMG:
     Solve a neutron diffusion eigenvalue problem in a 1-D geometry using cell-averaged unknowns.
     """
 
-    def __init__(self, domain: Domain, dif, rem, nu_fission, scatmat, mean_kind: str = 'harmonic'):
+    def __init__(self, domain: Domain, dif, rem, scatmat, nu_fission, mean_kind: str = 'harmonic'):
         """
         Initialize solver from an instance of Domain, containing geometrical description of the problem
         and lists of nuclear data.
 
         :param domain: instance of Domain containing geometrical description
         :param dif: list of diffusion coefficients at cells
-        :param sig_a: list of absorption cross-sections at cells
+        :param rem: list of absorption cross-sections at cells
+        :param scatmat: scattering matrix at cells
         :param nu_fission: list of neutron production cross-sections at cells
         :param mean_kind: type of mean to use for diffusion interpolation at cell boundaries (harmonic or arithmetic)
         """
@@ -560,14 +561,15 @@ class DiffusionEigenvalueMG:
         self.D = extrapolate_to_boundaries(self.D)
 
     @classmethod
-    def from_position_function(cls, domain: Domain, dif_func, rem_func, nu_fission_func, scatmat_func, mean_kind: str = 'harmonic'):
+    def from_position_function(cls, domain: Domain, dif_func, rem_func, scatmat_func, nu_fission_func, mean_kind: str = 'harmonic'):
         """
         Helper function to initialize the solver from cross-sections given as functions that take an array of positions
         and return an array of cross-sections.
 
         :param domain: instance of Domain containing geometrical description
         :param dif_func: function that returns diffusion coefficients given positions
-        :param sig_a_func: function that returns absorption cross-section given positions
+        :param rem_func: function that returns removal cross-section given positions
+        :param scatmat_func: function that returns the scattering matrix given positions
         :param nu_fission_func: function that returns neutron production cross-section given positions
         :param mean_kind: type of mean to use for diffusion interpolation at cell boundaries (harmonic or arithmetic)
         :return: instance of DiffusionEigenvalue
@@ -577,7 +579,7 @@ class DiffusionEigenvalueMG:
         nu_fission = nu_fission_func(domain.centers)
         scatmat = scatmat_func(domain.centers)
 
-        return cls(domain, dif, rem, nu_fission, scatmat, mean_kind=mean_kind)
+        return cls(domain, dif, rem, scatmat, nu_fission, mean_kind=mean_kind)
 
     @classmethod
     def from_materials(cls, domain: Domain, materials, mean_kind: str = 'harmonic'):
@@ -591,11 +593,10 @@ class DiffusionEigenvalueMG:
         """
         dif = np.array([mat.diffusion() for mat in materials])
         rem = np.array([mat.absorption() for mat in materials])
-        nu_fission = np.array([mat.nu_fission() for mat in materials])
         scatmat = np.array([mat.scattering_matrix() for mat in materials])
+        nu_fission = np.array([mat.nu_fission() for mat in materials])
 
-
-        return cls(domain, dif, rem, nu_fission, scatmat, mean_kind=mean_kind)
+        return cls(domain, dif, rem, scatmat, nu_fission, mean_kind=mean_kind)
 
     # def calculate_current(self, phi):
     #     self.D[i] * (phi[i + 1] - phi[i]) / self.delta_c[i]
