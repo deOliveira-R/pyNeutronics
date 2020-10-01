@@ -125,7 +125,7 @@ def inverse_power(A, B, epsilon=1.0e-6, debug=False):
     iteration = 1
     while not converged:
         # x = spl.solve(A, np.dot(B, x_old))
-        x = sps.spsolve(A, B.dot(x_old))  # need to make the diffusion assemble a sparse matrix
+        x = sps.spsolve(A, B.dot(x_old))
         l = spl.norm(x)
         sign = x[0] / x_old[0] / l
         x_old = x / l

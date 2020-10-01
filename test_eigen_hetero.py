@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as sps
 import matplotlib.pyplot as plt
 import seaborn as sns
 import diffusion_fdm as dif
@@ -93,8 +94,73 @@ axa = plt.plot(slab.centers, phi_num)
 axb = plt.plot(slab.centers, slab_res)
 plt.show()
 
-def dif_func(r):
-    return np.array([1.16356040, 0.56])*(r <= 75)\
-           + np.array([2.04235228, 1.4])*(r > 75)
 
-print(dif_func(76))
+Fuel = 258.6291
+CVessel = 261.1291
+Blanket = 325.5525
+BVessel = 328.0525
+Reflector = 428.0525
+
+
+dif_fuel = np.array([3.65870, 2.56102])
+dif_refl = np.array([1.45225, 1.00673])
+
+
+def dif_func(r):
+    return np.tensordot(dif_fuel, (r <= 328.0525), axes=0) \
+         + np.tensordot(dif_refl, (r > BVessel), axes=0)
+
+
+def rem_func(r):
+    return np.tensordot(np.array([2.49234E-3, 4.28807E-3]), (r <= 328.0525), axes=0) \
+         + np.tensordot(np.array([1.11615E-3, 2.39873E-4]), (r > BVessel), axes=0)
+
+
+def scatmat_func(r):
+    return np.tensordot(np.array([[1.10133E-1, 0.0],
+                                  [1.01102E-3, 1.38648E-1]]), (r <= 328.0525), axes=0) \
+         + np.tensordot(np.array([[2.67519E-1, 0.0],
+                                  [9.9763E-4, 3.326E-1]]), (r > BVessel), axes=0)
+
+
+def nu_fission_func(r):
+    return np.tensordot(np.array([2.215E-3, 2.61801E-3]), (r <= 328.0525), axes=0) \
+         + np.tensordot(np.array([0.0, 0.0]), (r > BVessel), axes=0)
+
+
+def chi_func(r):
+    return np.tensordot(np.array([9.98476E-1, 1.52399E-3]), (r <= 328.0525), axes=0) \
+         + np.tensordot(np.array([0.0, 0.0]), (r > BVessel), axes=0)
+
+
+I = 500
+BC = (1, 0)
+
+cyl = dif.Domain.uniform(Reflector, I, 'cylindrical')
+
+# test_fac = np.array([2, 1, 3])
+#
+# test_int = dif_func(76)
+# # print(test_int)
+#
+# test_vec = dif_func(np.array([74, 75, 76]))
+# # print(test_vec)
+# # print(test_vec[0])
+#
+# test_scat = scatmat_func(np.array([74, 75, 76]))
+# print(test_scat)
+# print(test_scat*test_fac)
+
+cyl_diffusionMG = dif.DiffusionEigenvalueMG.from_position_function(cyl, dif_func, rem_func, scatmat_func, nu_fission_func, chi_func)
+# A, B = slab_diffusionMG.assemble(BC)
+# print(A[0][0].toarray())
+#
+# A_block = sps.bmat(A).toarray()
+# B_block = sps.bmat(B).toarray()
+
+kmg, phimg = cyl_diffusionMG.solve(BC)
+
+plt.figure()
+axmg1 = plt.plot(cyl.centers, phimg[0])
+axmg2 = plt.plot(cyl.centers, phimg[1])
+plt.show()

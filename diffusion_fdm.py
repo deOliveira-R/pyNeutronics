@@ -14,7 +14,7 @@ TODO: - Implement unit test with analytical solution
 """
 
 import numpy as np
-# import scipy.linalg as spl
+import scipy.linalg as spl
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsl
 # from scipy.special import j0
@@ -172,8 +172,9 @@ class DiffusionSource:
     """
     Solve a source driven neutron diffusion problem in a 1-D geometry using cell-averaged unknowns.
     """
+    _default_mean = 'harmonic'
 
-    def __init__(self, domain: Domain, dif, sig_a, nu_fission, source, mean_kind: str = 'harmonic'):
+    def __init__(self, domain: Domain, dif, sig_a, nu_fission, source, mean_kind: str = _default_mean):
         """
         Initialize solver from an instance of Domain, containing geometrical description of the problem
         and lists of nuclear data.
@@ -212,7 +213,7 @@ class DiffusionSource:
         self.D = extrapolate_to_boundaries(self.D)
 
     @classmethod
-    def from_position_function(cls, domain: Domain, dif_func, sig_a_func, nu_fission_func, source_func, mean_kind: str = 'harmonic'):
+    def from_position_function(cls, domain: Domain, dif_func, sig_a_func, nu_fission_func, source_func, mean_kind: str = _default_mean):
         """
         Helper function to initialize the solver from cross-sections given as functions that take an array of positions
         and return an array of cross-sections.
@@ -233,7 +234,7 @@ class DiffusionSource:
         return cls(domain, dif, sig_a, nu_fission, source, mean_kind=mean_kind)
 
     @classmethod
-    def from_materials(cls, domain: Domain, materials, source_func, mean_kind: str = 'harmonic'):
+    def from_materials(cls, domain: Domain, materials, source_func, mean_kind: str = _default_mean):
         """
         Helper function to initialize the solver from list of Material instances to provide cross-sections.
 
@@ -345,8 +346,9 @@ class DiffusionEigenvalue1E:
     """
     Solve a neutron diffusion eigenvalue problem in a 1-D geometry using cell-averaged unknowns.
     """
+    _default_mean = 'harmonic'
 
-    def __init__(self, domain: Domain, dif, sig_a, nu_fission, mean_kind: str = 'harmonic'):
+    def __init__(self, domain: Domain, dif, sig_a, nu_fission, mean_kind: str = _default_mean):
         """
         Initialize solver from an instance of Domain, containing geometrical description of the problem
         and lists of nuclear data.
@@ -383,7 +385,7 @@ class DiffusionEigenvalue1E:
         self.D = extrapolate_to_boundaries(self.D)
 
     @classmethod
-    def from_position_function(cls, domain: Domain, dif_func, sig_a_func, nu_fission_func, mean_kind: str = 'harmonic'):
+    def from_position_function(cls, domain: Domain, dif_func, sig_a_func, nu_fission_func, mean_kind: str = _default_mean):
         """
         Helper function to initialize the solver from cross-sections given as functions that take an array of positions
         and return an array of cross-sections.
@@ -402,7 +404,7 @@ class DiffusionEigenvalue1E:
         return cls(domain, dif, sig_a, nu_fission, mean_kind=mean_kind)
 
     @classmethod
-    def from_materials(cls, domain: Domain, materials, mean_kind: str = 'harmonic'):
+    def from_materials(cls, domain: Domain, materials, mean_kind: str = _default_mean):
         """
         Helper function to initialize the solver from list of Material instances to provide cross-sections.
 
@@ -495,16 +497,11 @@ class DiffusionEigenvalue1E:
         A, B = self.assemble(BC, BCO)
 
         # find eigenvalue
-        # l, phi = spl.eig(A, B)
-
-        # l, phi = es.inverse_power(A, B, epsilon)
-        # l, phi = es.inverse_power_lu(A, B, epsilon)
-        # l, phi = es.inverse_power_linear(A, B, epsilon)
-
         # l, phi = spl.eig(A.toarray(), B.toarray())
-        # l, phi = es.inverse_power(A.tocsr(), B, epsilon)
+
+        l, phi = es.inverse_power(A.tocsr(), B, epsilon)
         # l, phi = es.inverse_power_lu(A.tocsc(), B, epsilon)
-        l, phi = es.inverse_power_linear(A, B, epsilon)
+        # l, phi = es.inverse_power_linear(A, B, epsilon)
 
         # Need to add some normalization with physical sense here.
         # Either generate a distribution that sums to 1
@@ -521,8 +518,9 @@ class DiffusionEigenvalueMG:
     """
     Solve a neutron diffusion eigenvalue problem in a 1-D geometry using cell-averaged unknowns.
     """
+    _default_mean = 'harmonic'
 
-    def __init__(self, domain: Domain, dif, rem, scatmat, nu_fission, mean_kind: str = 'harmonic'):
+    def __init__(self, domain: Domain, dif, rem, scatmat, nu_fission, chi, mean_kind: str = _default_mean):
         """
         Initialize solver from an instance of Domain, containing geometrical description of the problem
         and lists of nuclear data.
@@ -541,15 +539,21 @@ class DiffusionEigenvalueMG:
         self.centers = self.domain.centers
         self.V = self.domain.volumes
 
+        self.domain_size = len(self.centers)
+
         self.dif = dif
         self.rem = rem
-        self.nu_fission = nu_fission
         self.scatmat = scatmat
+        self.nu_fission = nu_fission
+        self.chi = chi
+
+        self.energy_groups = len(self.dif)
 
         # get values at interface
         self.delta_c = self.domain.delta_centers  # distance between cell centers (useful for finite differences)
         self.S = self.domain.surfaces
-        self.D = mean(dif, self.delta_p, kind=mean_kind)
+        # self.D = mean(dif, self.delta_p, kind=mean_kind)
+        self.D = np.apply_along_axis(mean, 1, dif, self.delta_p, kind=mean_kind)
 
         # These values are not defined at the outermost surface of the domain (boundaries)
         # By extrapolating delta_c, we created a "ghost cell" outside of the domain at the same distance from the
@@ -558,10 +562,11 @@ class DiffusionEigenvalueMG:
         # Extrapolation of diffusion coefficient is the current approach. Maybe it could be replaced by an effective
         # coefficient.
         self.delta_c = extrapolate_to_boundaries(self.delta_c)
-        self.D = extrapolate_to_boundaries(self.D)
+        self.D = np.apply_along_axis(extrapolate_to_boundaries, 1, self.D)
+        # self.D = extrapolate_to_boundaries(self.D)
 
     @classmethod
-    def from_position_function(cls, domain: Domain, dif_func, rem_func, scatmat_func, nu_fission_func, mean_kind: str = 'harmonic'):
+    def from_position_function(cls, domain: Domain, dif_func, rem_func, scatmat_func, nu_fission_func, chi_func, mean_kind: str = _default_mean):
         """
         Helper function to initialize the solver from cross-sections given as functions that take an array of positions
         and return an array of cross-sections.
@@ -576,13 +581,14 @@ class DiffusionEigenvalueMG:
         """
         dif = dif_func(domain.centers)
         rem = rem_func(domain.centers)
-        nu_fission = nu_fission_func(domain.centers)
         scatmat = scatmat_func(domain.centers)
+        nu_fission = nu_fission_func(domain.centers)
+        chi = chi_func(domain.centers)
 
-        return cls(domain, dif, rem, scatmat, nu_fission, mean_kind=mean_kind)
+        return cls(domain, dif, rem, scatmat, nu_fission, chi, mean_kind=mean_kind)
 
     @classmethod
-    def from_materials(cls, domain: Domain, materials, mean_kind: str = 'harmonic'):
+    def from_materials(cls, domain: Domain, materials, mean_kind: str = _default_mean):
         """
         Helper function to initialize the solver from list of Material instances to provide cross-sections.
 
@@ -614,30 +620,33 @@ class DiffusionEigenvalueMG:
                 B: right hand side matrix containing neutron sources
         """
 
-        # create matrices with size of cell centers + 2 extras for boundary conditions
-        sz = len(self.centers)
-        A = np.zeros((sz + 2, sz + 2))
-        B = np.zeros_like(A)
+        A = [[None for i in range(self.energy_groups)] for j in range(self.energy_groups)]
+        B = [[None for i in range(self.energy_groups)] for j in range(self.energy_groups)]
 
-        # Set up boundary conditions at 0 and R on the first and last rows of matrix A
-        A[0, 0] = (BCO[0] * 0.5 + BCO[1] / self.delta_c[0])
-        A[0, 1] = (BCO[0] * 0.5 - BCO[1] / self.delta_c[0])
-        A[sz + 1, sz] = (0.5 * BC[0] - BC[1] / self.delta_c[-1])
-        A[sz + 1, sz + 1] = (0.5 * BC[0] + BC[1] / self.delta_c[-1])
+        bcoe = (BCO[0] * 0.5 + BCO[1] / self.delta_c[0])
+        bco0 = (BCO[0] * 0.5 - BCO[1] / self.delta_c[0])
+        bc0 = (0.5 * BC[0] - BC[1] / self.delta_c[-1])
+        bce = (0.5 * BC[0] + BC[1] / self.delta_c[-1])
 
-        # fill the matrix by running through the tri-diagonal
-        # we avoid the first and last rows, since they are boundary conditions already set
-        for i, r in enumerate(self.centers):
-            m = i + 1
+        backwards_ratio = self.S[:-1] / (self.delta_c[:-1] * self.V)
+        forwards_ratio = self.S[1:] / (self.delta_c[1:] * self.V)
 
-            backward = self.S[i] * self.D[i] / (self.delta_c[i] * self.V[i])
-            forward = self.S[i + 1] * self.D[i + 1] / (self.delta_c[i + 1] * self.V[i])
+        for i, (D, rem, scati, nu_fission, chi) in enumerate(zip(self.D, self.rem, self.scatmat, self.nu_fission, self.chi)):
+            backwards = D[:-1] * backwards_ratio
+            forwards = D[1:] * forwards_ratio
+            centrals = backwards + forwards + rem
 
-            A[m, m - 1] = -backward
-            A[m, m] = backward + forward + self.rem[i]
-            A[m, m + 1] = -forward
+            A[i][i] = sps.diags([np.concatenate([-backwards, [bc0]]),
+                           np.concatenate([[bcoe], centrals, [bce]]),
+                           np.concatenate([[bco0], -forwards])],
+                          [-1, 0, 1])
 
-            B[m, m] = self.nu_fission[i]
+            B[i][i] = sps.diags(np.concatenate([[0.0], chi*nu_fission, [0.0]]))
+
+            for j, scatij in enumerate(scati):
+                if i != j:
+                    if not np.all(scatij == 0):
+                        A[i][j] = sps.diags(np.concatenate([[0.0], -scatij, [0.0]]))
 
         return A, B
 
@@ -658,9 +667,12 @@ class DiffusionEigenvalueMG:
         """
         A, B = self.assemble(BC, BCO)
 
+        A_block = sps.bmat(A)
+        B_block = sps.bmat(B)
+
         # find eigenvalue
         # l, phi = sp.linalg.eig(A, B)
-        l, phi = es.inverse_power(A, B, epsilon)
+        l, phi = es.inverse_power(A_block.tocsr(), B_block, epsilon)
         # l, phi = inverse_power_lu(A, B, epsilon)
         # l, phi = inverse_power_bicgstab(A, B, epsilon)
 
@@ -671,7 +683,13 @@ class DiffusionEigenvalueMG:
 
         k = 1.0 / l
         # remove first and last elements of phi because they are outside the domain (at ghost points)
-        phi = phi[1:-1]
+        # phi = phi[1:-1]
+
+        phi = np.reshape(phi, (2, -1))
+        # phi = np.delete(phi, (0, -1), 1)  # doesn' work at the moment. negative index is ignored.
+        phi = np.delete(phi, 0, 1)
+        phi = np.delete(phi, -1, 1)
+
         return k, phi
 
 
